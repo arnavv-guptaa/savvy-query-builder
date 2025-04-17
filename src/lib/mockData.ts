@@ -1,5 +1,4 @@
-
-import { Chatbot, ChatMessage, Document } from "@/types";
+import { Chatbot, ChatMessage, Document, ChatbotSettings } from "@/types";
 
 // Sample documents
 export const sampleDocuments: Document[] = [

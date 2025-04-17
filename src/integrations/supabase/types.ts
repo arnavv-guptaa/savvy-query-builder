@@ -9,7 +9,160 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          chatbot_id: string
+          created_at: string
+          id: string
+          sender: string
+          session_id: string
+          sources: Json | null
+          text: string
+        }
+        Insert: {
+          chatbot_id: string
+          created_at?: string
+          id?: string
+          sender: string
+          session_id: string
+          sources?: Json | null
+          text: string
+        }
+        Update: {
+          chatbot_id?: string
+          created_at?: string
+          id?: string
+          sender?: string
+          session_id?: string
+          sources?: Json | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_chatbot_id_fkey"
+            columns: ["chatbot_id"]
+            isOneToOne: false
+            referencedRelation: "chatbots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatbots: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          include_sources: boolean
+          max_tokens: number
+          name: string
+          primary_color: string
+          share_id: string
+          tone: string
+          updated_at: string
+          user_id: string
+          welcome_message: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          include_sources?: boolean
+          max_tokens?: number
+          name: string
+          primary_color?: string
+          share_id?: string
+          tone?: string
+          updated_at?: string
+          user_id: string
+          welcome_message?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          include_sources?: boolean
+          max_tokens?: number
+          name?: string
+          primary_color?: string
+          share_id?: string
+          tone?: string
+          updated_at?: string
+          user_id?: string
+          welcome_message?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          chatbot_id: string
+          chunks: number | null
+          created_at: string
+          id: string
+          name: string
+          size: number
+          status: string
+          type: string
+          updated_at: string
+          upload_path: string | null
+          url: string | null
+        }
+        Insert: {
+          chatbot_id: string
+          chunks?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          size: number
+          status?: string
+          type: string
+          updated_at?: string
+          upload_path?: string | null
+          url?: string | null
+        }
+        Update: {
+          chatbot_id?: string
+          chunks?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          size?: number
+          status?: string
+          type?: string
+          updated_at?: string
+          upload_path?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_chatbot_id_fkey"
+            columns: ["chatbot_id"]
+            isOneToOne: false
+            referencedRelation: "chatbots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

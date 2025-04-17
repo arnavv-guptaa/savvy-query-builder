@@ -5,10 +5,10 @@ export interface Document {
   name: string;
   type: 'pdf' | 'docx' | 'txt' | 'url';
   size: number;
-  upload_path?: string;
-  url?: string;
+  upload_path?: string | null;
+  url?: string | null;
   status: 'processing' | 'completed' | 'failed';
-  chunks?: number;
+  chunks?: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -17,7 +17,7 @@ export interface Chatbot {
   id: string;
   user_id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   welcome_message: string;
   primary_color: string;
   tone: 'professional' | 'friendly' | 'concise';
@@ -38,7 +38,7 @@ export interface ChatMessage {
     documentId: string;
     documentName: string;
     relevance: number;
-  }[];
+  }[] | null;
   created_at: Date;
 }
 

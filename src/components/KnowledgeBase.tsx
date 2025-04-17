@@ -73,7 +73,7 @@ const KnowledgeBase = ({ documents, onDeleteDocument }: KnowledgeBaseProps) => {
                   {getDocumentIcon(doc)}
                   <span className="truncate" title={doc.name}>{doc.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(doc.uploadedAt, { addSuffix: true })}
+                    {formatDistanceToNow(doc.created_at, { addSuffix: true })}
                   </span>
                 </div>
                 <div className="col-span-2 text-sm text-muted-foreground">
