@@ -1,57 +1,124 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ChatbotSettings } from "@/types";
+import { Chatbot, ChatbotSettings } from "@/types";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Copy, Share2 } from "lucide-react";
 
 interface CustomizationPanelProps {
-  settings: ChatbotSettings;
-  onSettingsChange: (settings: ChatbotSettings) => void;
+  chatbot?: Chatbot;
+  onSave: (settings: ChatbotSettings) => void;
 }
 
-const CustomizationPanel = ({
-  settings,
-  onSettingsChange,
+const CustomizationPanel = ({ 
+  chatbot, 
+  onSave 
 }: CustomizationPanelProps) => {
-  const [tempSettings, setTempSettings] = useState<ChatbotSettings>({...settings});
+  const [tempSettings, setTempSettings] = useState<ChatbotSettings>({
+    name: chatbot?.name || "Knowledge Assistant",
+    description: chatbot?.description || "",
+    welcome_message: chatbot?.welcome_message || "Hello! How can I help you today?",
+    primary_color: chatbot?.primary_color || "#7E69AB",
+    tone: chatbot?.tone || "professional",
+    max_tokens: chatbot?.max_tokens || 2048,
+    include_sources: chatbot?.include_sources ?? true
+  });
+  
+  const [shareLink, setShareLink] = useState<string | null>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   const predefinedColors = [
-    "#7E69AB", // Purple
-    "#3B82F6", // Blue
-    "#10B981", // Green
-    "#F59E0B", // Amber
-    "#EF4444", // Red
-    "#8B5CF6", // Violet
-    "#EC4899", // Pink
-    "#000000", // Black
+    "#7E69AB", "#3B82F6", "#10B981", 
+    "#F59E0B", "#EF4444", "#8B5CF6", 
+    "#EC4899", "#000000"
   ];
 
   const handleChange = (key: keyof ChatbotSettings, value: any) => {
-    setTempSettings({
-      ...tempSettings,
-      [key]: value,
-    });
+    setTempSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSettingsChange(tempSettings);
-    toast({
-      title: "Settings saved",
-      description: "Your chatbot customization settings have been updated.",
-    });
+  const handleCreateOrUpdateChatbot = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to create or update a chatbot.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const chatbotData = {
+        ...tempSettings,
+        user_id: user.id,
+      };
+
+      let result;
+      if (chatbot) {
+        // Update existing chatbot
+        result = await supabase
+          .from('chatbots')
+          .update(chatbotData)
+          .eq('id', chatbot.id)
+          .select()
+          .single();
+      } else {
+        // Create new chatbot
+        result = await supabase
+          .from('chatbots')
+          .insert(chatbotData)
+          .select()
+          .single();
+      }
+
+      if (result.error) throw result.error;
+
+      const savedChatbot = result.data;
+      
+      // Generate share link
+      const shareLink = `${window.location.origin}/chatbot/${savedChatbot.share_id}`;
+      setShareLink(shareLink);
+
+      toast({
+        title: "Chatbot Saved",
+        description: "Your chatbot has been successfully created/updated.",
+      });
+
+      onSave(savedChatbot);
+    } catch (error) {
+      console.error("Error saving chatbot:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save chatbot. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (shareLink) {
+      navigator.clipboard.writeText(shareLink);
+      toast({
+        title: "Link Copied",
+        description: "Shareable link has been copied to clipboard."
+      });
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-1">
+    <div className="space-y-6 p-1">
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="chatbotName">Chatbot Name</Label>
@@ -100,8 +167,8 @@ const CustomizationPanel = ({
           <Label htmlFor="welcomeMessage">Welcome Message</Label>
           <Textarea
             id="welcomeMessage"
-            value={tempSettings.welcomeMessage}
-            onChange={(e) => handleChange("welcomeMessage", e.target.value)}
+            value={tempSettings.welcome_message}
+            onChange={(e) => handleChange("welcome_message", e.target.value)}
             placeholder="Hello! How can I help you today?"
             rows={3}
           />
@@ -132,15 +199,15 @@ const CustomizationPanel = ({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <Label htmlFor="maxTokens">Max Response Tokens</Label>
-            <Badge variant="outline">{tempSettings.maxTokens}</Badge>
+            <Badge variant="outline">{tempSettings.max_tokens}</Badge>
           </div>
           <Slider
             id="maxTokens"
-            value={[tempSettings.maxTokens]}
+            value={[tempSettings.max_tokens]}
             min={256}
             max={4096}
             step={128}
-            onValueChange={(value) => handleChange("maxTokens", value[0])}
+            onValueChange={(value) => handleChange("max_tokens", value[0])}
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Shorter</span>
@@ -152,14 +219,43 @@ const CustomizationPanel = ({
           <Label htmlFor="includeSources" className="cursor-pointer">Include Sources in Responses</Label>
           <Switch
             id="includeSources"
-            checked={tempSettings.includeSources}
-            onCheckedChange={(checked) => handleChange("includeSources", checked)}
+            checked={tempSettings.include_sources}
+            onCheckedChange={(checked) => handleChange("include_sources", checked)}
           />
         </div>
       </div>
+      
+      {shareLink && (
+        <div className="border rounded-lg p-3 bg-muted/50 flex items-center justify-between">
+          <div className="truncate mr-2">
+            <p className="text-sm font-medium">Shareable Link</p>
+            <p className="text-xs text-muted-foreground truncate">{shareLink}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleCopyLink}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
-      <Button type="submit" className="w-full">Save Settings</Button>
-    </form>
+      <Button 
+        onClick={handleCreateOrUpdateChatbot} 
+        className="w-full"
+      >
+        {chatbot ? "Update Chatbot" : "Create Chatbot"}
+      </Button>
+    </div>
   );
 };
 
