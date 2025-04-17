@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -8,30 +9,26 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Chatbot, ChatbotSettings } from "@/types";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Copy, Share2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { Copy, Share2, Loader2 } from "lucide-react";
 
 interface CustomizationPanelProps {
   chatbot?: Chatbot;
-  onSave: (settings: ChatbotSettings) => void;
+  settings: ChatbotSettings;
+  onSettingsChange: (settings: ChatbotSettings) => void;
+  onSave?: (settings: ChatbotSettings) => Promise<void>;
 }
 
 const CustomizationPanel = ({ 
   chatbot, 
-  onSave 
+  settings,
+  onSettingsChange,
+  onSave
 }: CustomizationPanelProps) => {
-  const [tempSettings, setTempSettings] = useState<ChatbotSettings>({
-    name: chatbot?.name || "Knowledge Assistant",
-    description: chatbot?.description || "",
-    welcome_message: chatbot?.welcome_message || "Hello! How can I help you today?",
-    primary_color: chatbot?.primary_color || "#7E69AB",
-    tone: chatbot?.tone || "professional",
-    max_tokens: chatbot?.max_tokens || 2048,
-    include_sources: chatbot?.include_sources ?? true
-  });
-  
-  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(
+    chatbot ? `${window.location.origin}/chatbot/${chatbot.share_id}` : null
+  );
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   const predefinedColors = [
@@ -41,69 +38,37 @@ const CustomizationPanel = ({
   ];
 
   const handleChange = (key: keyof ChatbotSettings, value: any) => {
-    setTempSettings(prev => ({
-      ...prev,
+    onSettingsChange({
+      ...settings,
       [key]: value
-    }));
+    });
   };
 
-  const handleCreateOrUpdateChatbot = async () => {
+  const handleSave = async () => {
+    if (!onSave) return;
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      setIsSaving(true);
+      await onSave(settings);
       
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to create or update a chatbot.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const chatbotData = {
-        ...tempSettings,
-        user_id: user.id,
-      };
-
-      let result;
+      // If the operation was successful, update the share link (if we have a chatbot)
       if (chatbot) {
-        // Update existing chatbot
-        result = await supabase
-          .from('chatbots')
-          .update(chatbotData)
-          .eq('id', chatbot.id)
-          .select()
-          .single();
-      } else {
-        // Create new chatbot
-        result = await supabase
-          .from('chatbots')
-          .insert(chatbotData)
-          .select()
-          .single();
+        setShareLink(`${window.location.origin}/chatbot/${chatbot.share_id}`);
       }
-
-      if (result.error) throw result.error;
-
-      const savedChatbot = result.data;
       
-      // Generate share link
-      const shareLink = `${window.location.origin}/chatbot/${savedChatbot.share_id}`;
-      setShareLink(shareLink);
-
       toast({
-        title: "Chatbot Saved",
-        description: "Your chatbot has been successfully created/updated.",
+        title: "Success",
+        description: "Chatbot settings saved successfully."
       });
-
-      onSave(savedChatbot);
     } catch (error) {
       console.error("Error saving chatbot:", error);
       toast({
         title: "Error",
-        description: "Failed to save chatbot. Please try again.",
+        description: "Failed to save chatbot settings. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -124,7 +89,7 @@ const CustomizationPanel = ({
           <Label htmlFor="chatbotName">Chatbot Name</Label>
           <Input
             id="chatbotName"
-            value={tempSettings.name}
+            value={settings.name}
             onChange={(e) => handleChange("name", e.target.value)}
             placeholder="Knowledge Assistant"
           />
@@ -135,13 +100,13 @@ const CustomizationPanel = ({
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-md cursor-pointer border"
-              style={{ backgroundColor: tempSettings.primaryColor }}
+              style={{ backgroundColor: settings.primary_color }}
               onClick={() => setColorPickerOpen(!colorPickerOpen)}
             />
             <Input
               id="primaryColor"
-              value={tempSettings.primaryColor}
-              onChange={(e) => handleChange("primaryColor", e.target.value)}
+              value={settings.primary_color}
+              onChange={(e) => handleChange("primary_color", e.target.value)}
               placeholder="#7E69AB"
               className="w-28"
             />
@@ -154,7 +119,7 @@ const CustomizationPanel = ({
                   className="w-8 h-8 rounded-md cursor-pointer border hover:scale-110 transition-transform"
                   style={{ backgroundColor: color }}
                   onClick={() => {
-                    handleChange("primaryColor", color);
+                    handleChange("primary_color", color);
                     setColorPickerOpen(false);
                   }}
                 />
@@ -167,7 +132,7 @@ const CustomizationPanel = ({
           <Label htmlFor="welcomeMessage">Welcome Message</Label>
           <Textarea
             id="welcomeMessage"
-            value={tempSettings.welcome_message}
+            value={settings.welcome_message}
             onChange={(e) => handleChange("welcome_message", e.target.value)}
             placeholder="Hello! How can I help you today?"
             rows={3}
@@ -177,8 +142,8 @@ const CustomizationPanel = ({
         <div className="space-y-2">
           <Label>Chatbot Tone</Label>
           <RadioGroup
-            value={tempSettings.tone}
-            onValueChange={(value) => handleChange("tone", value)}
+            value={settings.tone}
+            onValueChange={(value: "professional" | "friendly" | "concise") => handleChange("tone", value)}
             className="flex flex-col space-y-1"
           >
             <div className="flex items-center space-x-2">
@@ -199,11 +164,11 @@ const CustomizationPanel = ({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <Label htmlFor="maxTokens">Max Response Tokens</Label>
-            <Badge variant="outline">{tempSettings.max_tokens}</Badge>
+            <Badge variant="outline">{settings.max_tokens}</Badge>
           </div>
           <Slider
             id="maxTokens"
-            value={[tempSettings.max_tokens]}
+            value={[settings.max_tokens]}
             min={256}
             max={4096}
             step={128}
@@ -219,7 +184,7 @@ const CustomizationPanel = ({
           <Label htmlFor="includeSources" className="cursor-pointer">Include Sources in Responses</Label>
           <Switch
             id="includeSources"
-            checked={tempSettings.include_sources}
+            checked={settings.include_sources}
             onCheckedChange={(checked) => handleChange("include_sources", checked)}
           />
         </div>
@@ -242,6 +207,7 @@ const CustomizationPanel = ({
             <Button 
               variant="outline" 
               size="icon"
+              onClick={() => window.open(shareLink, '_blank')}
             >
               <Share2 className="h-4 w-4" />
             </Button>
@@ -249,12 +215,22 @@ const CustomizationPanel = ({
         </div>
       )}
 
-      <Button 
-        onClick={handleCreateOrUpdateChatbot} 
-        className="w-full"
-      >
-        {chatbot ? "Update Chatbot" : "Create Chatbot"}
-      </Button>
+      {onSave && (
+        <Button 
+          onClick={handleSave} 
+          className="w-full"
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            chatbot ? "Update Chatbot" : "Create Chatbot"
+          )}
+        </Button>
+      )}
     </div>
   );
 };

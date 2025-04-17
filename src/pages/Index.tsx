@@ -1,165 +1,107 @@
 
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { Bot, Database, MessagesSquare } from "lucide-react";
 import Nav from "@/components/Nav";
-import UploadArea from "@/components/UploadArea";
-import KnowledgeBase from "@/components/KnowledgeBase";
-import ChatInterface from "@/components/ChatInterface";
-import CustomizationPanel from "@/components/CustomizationPanel";
-import { ChatMessage, Document, ChatbotSettings } from "@/types";
-import { mockDocuments, mockChatHistory, defaultChatbotSettings } from "@/lib/mockData";
-import { Bot, Settings, Database } from "lucide-react";
 
 const Index = () => {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(mockChatHistory);
-  const [settings, setSettings] = useState<ChatbotSettings>(defaultChatbotSettings);
-  const [activeTab, setActiveTab] = useState("knowledge");
-
-  const handleDocumentsAdded = (newDocuments: Document[]) => {
-    // Check if any document is being updated (has same ID)
-    const updatedDocs = [...documents];
-    
-    newDocuments.forEach(newDoc => {
-      const existingIndex = updatedDocs.findIndex(doc => doc.id === newDoc.id);
-      if (existingIndex >= 0) {
-        updatedDocs[existingIndex] = newDoc;
-      } else {
-        updatedDocs.push(newDoc);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Check if user is logged in
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // If user is already logged in, redirect to dashboard
+        navigate('/dashboard');
       }
-    });
-    
-    setDocuments(updatedDocs);
-  };
-
-  const handleDeleteDocument = (documentId: string) => {
-    setDocuments(documents.filter(doc => doc.id !== documentId));
-  };
-
-  const handleSendMessage = (message: string) => {
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}-user`,
-      text: message,
-      sender: "user",
-      timestamp: new Date()
     };
     
-    setChatHistory([...chatHistory, userMessage]);
-    
-    // Simulate bot thinking
-    setTimeout(() => {
-      // Generate a response based on tone
-      let response = "";
-      
-      if (settings.tone === "professional") {
-        response = `Based on the information in your knowledge base, ${message.toLowerCase().includes("how") ? "the process involves" : "I can confirm that"} several key points are relevant to your query. The documents indicate that ${message.toLowerCase().includes("what") ? "the concept encompasses" : "it's characterized by"} specific attributes that align with best practices in the industry.`;
-      } else if (settings.tone === "friendly") {
-        response = `Great question! I looked through your documents and found some interesting information about that. ${message.toLowerCase().includes("how") ? "Here's how it works" : "Here's what I found"}: your documents mention several helpful points that I think will answer your question.`;
-      } else { // concise
-        response = `${message.toLowerCase().includes("what") ? "Your documents define this as" : "According to your knowledge base,"} a structured approach with specific implementation details aimed at maximizing efficiency and accuracy.`;
-      }
-      
-      // Add bot response
-      const botMessage: ChatMessage = {
-        id: `msg-${Date.now()}-bot`,
-        text: response,
-        sender: "bot",
-        timestamp: new Date(),
-        sources: documents
-          .filter(doc => doc.status === "completed")
-          .slice(0, 2)
-          .map(doc => ({
-            documentId: doc.id,
-            documentName: doc.name,
-            relevance: Math.random() * 0.3 + 0.7 // Random relevance between 0.7 and 1.0
-          }))
-      };
-      
-      setChatHistory(prevHistory => [...prevHistory, botMessage]);
-    }, 1500);
-  };
-
-  const handleSettingsChange = (newSettings: ChatbotSettings) => {
-    setSettings(newSettings);
-  };
+    checkUser();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
       
-      <main className="flex-1 container py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Your AI Chatbot</CardTitle>
-                <CardDescription>
-                  Upload documents to create a custom knowledge base for your AI chatbot
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="knowledge" value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid grid-cols-2 mb-6">
-                    <TabsTrigger value="knowledge" className="flex items-center gap-2">
-                      <Database className="h-4 w-4" />
-                      Knowledge Base
-                    </TabsTrigger>
-                    <TabsTrigger value="settings" className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Customization
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="knowledge" className="space-y-6">
-                    <UploadArea onDocumentsAdded={handleDocumentsAdded} />
-                    
-                    <Separator />
-                    
-                    <KnowledgeBase 
-                      documents={documents} 
-                      onDeleteDocument={handleDeleteDocument} 
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="settings">
-                    <CustomizationPanel 
-                      settings={settings} 
-                      onSettingsChange={handleSettingsChange} 
-                    />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+      <main className="flex-1 container py-12 px-4 flex flex-col items-center justify-center">
+        <div className="max-w-2xl text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Create Custom AI Chatbots from Your Documents
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8">
+            Upload your documents, customize your chatbot, and share it with anyone.
+            No coding required.
+          </p>
+          
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Button 
+              size="lg" 
+              onClick={() => navigate('/auth')}
+              className="gap-2"
+            >
+              <Bot className="h-5 w-5" />
+              Get Started
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate('/dashboard')}
+              className="gap-2"
+            >
+              <Database className="h-5 w-5" />
+              Go to Dashboard
+            </Button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
+          <div className="flex flex-col items-center text-center p-6 rounded-lg border bg-card">
+            <Database className="h-12 w-12 mb-4 text-primary" />
+            <h3 className="text-xl font-bold mb-2">Upload Documents</h3>
+            <p className="text-muted-foreground">
+              Upload PDFs, Word documents, and text files to create your custom knowledge base.
+            </p>
           </div>
           
-          <div>
-            <Card className="h-full flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5" />
-                  Chatbot Preview
-                </CardTitle>
-                <CardDescription>
-                  Test your chatbot with the current settings and knowledge base
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 pb-6">
-                <div className="h-[500px]">
-                  <ChatInterface 
-                    chatHistory={chatHistory}
-                    documents={documents}
-                    settings={settings}
-                    onSendMessage={handleSendMessage}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          <div className="flex flex-col items-center text-center p-6 rounded-lg border bg-card">
+            <Bot className="h-12 w-12 mb-4 text-primary" />
+            <h3 className="text-xl font-bold mb-2">Customize Chatbot</h3>
+            <p className="text-muted-foreground">
+              Personalize your chatbot's appearance, tone, and behavior to match your brand.
+            </p>
+          </div>
+          
+          <div className="flex flex-col items-center text-center p-6 rounded-lg border bg-card">
+            <MessagesSquare className="h-12 w-12 mb-4 text-primary" />
+            <h3 className="text-xl font-bold mb-2">Share with Anyone</h3>
+            <p className="text-muted-foreground">
+              Generate a unique link to share your AI chatbot with colleagues or customers.
+            </p>
           </div>
         </div>
       </main>
+      
+      <footer className="border-t py-6">
+        <div className="container flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-muted-foreground">
+            © 2025 Query. AI-powered chatbots.
+          </p>
+          <div className="flex gap-6 mt-4 md:mt-0">
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+              Privacy Policy
+            </a>
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+              Terms of Service
+            </a>
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+              Contact
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Send, Info } from "lucide-react";
 import { ChatMessage, Document, ChatbotSettings } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatInterfaceProps {
   chatHistory: ChatMessage[];
@@ -21,7 +22,9 @@ const ChatInterface = ({
   onSendMessage,
 }: ChatInterfaceProps) => {
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,9 +36,17 @@ const ChatInterface = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      onSendMessage(message);
-      setMessage("");
+    if (message.trim() && !isLoading) {
+      try {
+        onSendMessage(message);
+        setMessage("");
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -58,7 +69,7 @@ const ChatInterface = ({
       <div className="p-3 border-b bg-muted/50 flex items-center">
         <div 
           className="w-8 h-8 rounded-full mr-2 flex items-center justify-center text-white font-semibold"
-          style={{ backgroundColor: settings.primaryColor }}
+          style={{ backgroundColor: settings.primary_color }}
         >
           {settings.name.charAt(0)}
         </div>
@@ -69,7 +80,7 @@ const ChatInterface = ({
         {chatHistory.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-muted-foreground">
-              <p className="mb-2">{settings.welcomeMessage}</p>
+              <p className="mb-2">{settings.welcome_message}</p>
               <p className="text-sm">Ask a question to get started.</p>
             </div>
           </div>
@@ -82,7 +93,7 @@ const ChatInterface = ({
                 }`}
               >
                 <div>{msg.text}</div>
-                {msg.sender === "bot" && msg.sources && msg.sources.length > 0 && settings.includeSources && (
+                {msg.sender === "bot" && msg.sources && msg.sources.length > 0 && settings.include_sources && (
                   <div className="mt-2 pt-2 border-t border-primary-foreground/20">
                     <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
                       <Info className="h-3 w-3" />
@@ -99,7 +110,7 @@ const ChatInterface = ({
                   msg.sender === "user" ? "text-right" : "text-left"
                 } mt-1`}
               >
-                {formatDistanceToNow(msg.timestamp, { addSuffix: true })}
+                {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
               </div>
             </div>
           ))
@@ -115,11 +126,12 @@ const ChatInterface = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="flex-1"
+            disabled={isLoading}
           />
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button type="submit" size="icon" disabled={!message.trim()}>
+                <Button type="submit" size="icon" disabled={!message.trim() || isLoading}>
                   <Send className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
