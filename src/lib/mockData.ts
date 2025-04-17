@@ -1,94 +1,108 @@
 
-import { ChatMessage, Document, ChatbotSettings } from "@/types";
+import { Chatbot, ChatMessage, Document } from "@/types";
 
-export const mockDocuments: Document[] = [
+// Sample documents
+export const sampleDocuments: Document[] = [
   {
-    id: "doc-1",
-    name: "Company Handbook.pdf",
+    id: "1",
+    chatbot_id: "1",
+    name: "Product Manual.pdf",
     type: "pdf",
-    size: 2457600, // 2.4 MB
-    uploadedAt: new Date(Date.now() - 3600000 * 24 * 2), // 2 days ago
+    size: 2500000,
     status: "completed",
-    chunks: 24,
+    chunks: 15,
+    created_at: new Date(),
+    updated_at: new Date()
   },
   {
-    id: "doc-2",
-    name: "Product Documentation.docx",
+    id: "2",
+    chatbot_id: "1",
+    name: "Support FAQ.docx",
     type: "docx",
-    size: 1843200, // 1.8 MB
-    uploadedAt: new Date(Date.now() - 3600000 * 12), // 12 hours ago
+    size: 1200000,
     status: "completed",
-    chunks: 18,
+    chunks: 8,
+    created_at: new Date(),
+    updated_at: new Date()
   },
   {
-    id: "doc-3",
-    name: "FAQ.txt",
+    id: "3",
+    chatbot_id: "1",
+    name: "API Documentation.txt",
     type: "txt",
-    size: 256000, // 256 KB
-    uploadedAt: new Date(Date.now() - 3600000 * 1), // 1 hour ago
-    status: "processing",
+    size: 500000,
+    status: "completed",
+    chunks: 5,
+    created_at: new Date(),
+    updated_at: new Date()
   },
   {
-    id: "doc-4",
-    name: "https://example.com/blog",
-    type: "url",
-    size: 1024000, // 1 MB
-    uploadedAt: new Date(Date.now() - 3600000 * 0.5), // 30 minutes ago
+    id: "4",
+    chatbot_id: "1",
+    name: "Installation Guide.pdf",
+    type: "pdf",
+    size: 1800000,
     status: "processing",
-  },
+    created_at: new Date(),
+    updated_at: new Date()
+  }
 ];
 
-export const mockChatHistory: ChatMessage[] = [
+// Sample chat messages
+export const sampleMessages: ChatMessage[] = [
   {
-    id: "msg-1",
-    text: "What are the main features of your product?",
-    sender: "user",
-    timestamp: new Date(Date.now() - 60000 * 5), // 5 minutes ago
+    id: "1",
+    chatbot_id: "1",
+    session_id: "session-123",
+    text: "Hello! How can I help you today?",
+    sender: "bot",
+    created_at: new Date()
   },
   {
-    id: "msg-2",
-    text: "Our product offers seamless document processing, advanced vector search, and customizable AI chatbots. The key features include document parsing for various formats, intelligent chunking with semantic boundaries, and efficient context retrieval for accurate responses.",
+    id: "2",
+    chatbot_id: "1",
+    session_id: "session-123",
+    text: "I'm looking for information about your product pricing.",
+    sender: "user",
+    created_at: new Date()
+  },
+  {
+    id: "3",
+    chatbot_id: "1",
+    session_id: "session-123",
+    text: "Our product pricing starts at $29/month for the basic plan. The premium plan is $59/month and includes additional features such as advanced analytics and priority support. Would you like me to provide more details about what's included in each plan?",
     sender: "bot",
-    timestamp: new Date(Date.now() - 60000 * 4.5), // 4.5 minutes ago
     sources: [
       {
-        documentId: "doc-2",
-        documentName: "Product Documentation.docx",
-        relevance: 0.92,
+        documentId: "1",
+        documentName: "Product Manual.pdf",
+        relevance: 0.92
       },
+      {
+        documentId: "2",
+        documentName: "Support FAQ.docx",
+        relevance: 0.78
+      }
     ],
+    created_at: new Date()
   },
   {
-    id: "msg-3",
-    text: "How does the context retrieval system work?",
+    id: "4",
+    chatbot_id: "1",
+    session_id: "session-123",
+    text: "Yes, please tell me more about the premium plan features.",
     sender: "user",
-    timestamp: new Date(Date.now() - 60000 * 2), // 2 minutes ago
-  },
-  {
-    id: "msg-4",
-    text: "Our context retrieval system uses a token-aware approach to maximize efficiency. It implements hybrid search combining semantic and keyword matching to find the most relevant information. The system also includes conversation memory to maintain context across multiple interactions, and uses compression techniques to fit more information within token limits.",
-    sender: "bot",
-    timestamp: new Date(Date.now() - 60000 * 1.5), // 1.5 minutes ago
-    sources: [
-      {
-        documentId: "doc-1",
-        documentName: "Company Handbook.pdf",
-        relevance: 0.78,
-      },
-      {
-        documentId: "doc-2",
-        documentName: "Product Documentation.docx",
-        relevance: 0.95,
-      },
-    ],
-  },
+    created_at: new Date()
+  }
 ];
 
-export const defaultChatbotSettings: ChatbotSettings = {
-  name: "QueryBot",
-  primaryColor: "#7E69AB",
-  welcomeMessage: "Hello! I'm your knowledge assistant. Ask me anything about the uploaded documents.",
+// Sample chatbot settings
+export const sampleChatbotSettings: ChatbotSettings = {
+  name: "Product Support Bot",
+  description: "An AI assistant to help customers with product information and support.",
+  welcome_message: "Hello! I'm your product support assistant. How can I help you today?",
+  primary_color: "#7E69AB",
   tone: "professional",
-  maxTokens: 1024,
-  includeSources: true,
+  max_tokens: 2048,
+  include_sources: true
 };
