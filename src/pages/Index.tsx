@@ -1,26 +1,11 @@
 
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { Bot, Database, MessagesSquare } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Nav from "@/components/Nav";
 
 const Index = () => {
   const navigate = useNavigate();
-  
-  useEffect(() => {
-    // Check if user is logged in
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // If user is already logged in, redirect to dashboard
-        navigate('/dashboard');
-      }
-    };
-    
-    checkUser();
-  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -39,7 +24,7 @@ const Index = () => {
           <div className="flex flex-wrap gap-4 justify-center">
             <Button 
               size="lg" 
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/dashboard')}
               className="gap-2"
             >
               <Bot className="h-5 w-5" />

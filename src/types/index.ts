@@ -33,11 +33,7 @@ export interface ChatMessage {
   session_id: string;
   text: string;
   sender: 'user' | 'bot';
-  sources?: {
-    documentId: string;
-    documentName: string;
-    relevance: number;
-  }[] | null;
+  sources?: { documentId: string; documentName: string; relevance: number; }[] | null;
   created_at: Date;
 }
 

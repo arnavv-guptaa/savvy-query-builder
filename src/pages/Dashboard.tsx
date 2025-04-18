@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,7 +101,7 @@ const Dashboard = () => {
       setNewChatbotName("");
       
       // Navigate to the edit page for the new chatbot
-      navigate(`/chatbot/${data.id}/edit`);
+      navigate(`/chatbot/edit/${data.id}`);
       
       toast({
         title: "Success",
@@ -276,7 +275,7 @@ const Dashboard = () => {
                   <Button 
                     className="flex-1"
                     variant="default"
-                    onClick={() => navigate(`/chatbot/${chatbot.id}/edit`)}
+                    onClick={() => navigate(`/chatbot/edit/${chatbot.id}`)}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Edit

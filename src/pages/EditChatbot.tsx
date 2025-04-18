@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,7 +53,7 @@ const EditChatbot = () => {
             navigate("/dashboard");
             toast({
               title: "Not Found",
-              description: "The chatbot you're trying to edit doesn't exist or you don't have permission to edit it.",
+              description: "The chatbot you're trying to edit doesn't exist.",
               variant: "destructive"
             });
           } else {
@@ -99,6 +98,19 @@ const EditChatbot = () => {
           include_sources: chatbotData.include_sources
         });
         setDocuments(formattedDocuments);
+
+        // Add welcome message for the preview
+        const welcomeMessage: ChatMessage = {
+          id: `welcome-${Date.now()}`,
+          chatbot_id: formattedChatbot.id,
+          session_id: previewSessionId,
+          text: formattedChatbot.welcome_message,
+          sender: "bot",
+          sources: [],
+          created_at: new Date()
+        };
+        
+        setChatHistory([welcomeMessage]);
         
       } catch (error) {
         console.error("Error fetching chatbot data:", error);
@@ -115,7 +127,7 @@ const EditChatbot = () => {
     if (id) {
       fetchChatbotData();
     }
-  }, [id, navigate]);
+  }, [id, navigate, previewSessionId]);
 
   const handleDocumentsAdded = (newDocuments: Document[]) => {
     // Check if any document is being updated (has same ID)
@@ -210,17 +222,30 @@ const EditChatbot = () => {
         session_id: previewSessionId,
         text: message,
         sender: "user",
+        sources: [],
         created_at: new Date()
       };
       
       setChatHistory(prev => [...prev, userMessage]);
       
+      // Save the message to database
+      const { error: saveError } = await supabase
+        .from("chat_messages")
+        .insert({
+          chatbot_id: chatbot.id,
+          session_id: previewSessionId,
+          text: message,
+          sender: "user"
+        });
+        
+      if (saveError) throw saveError;
+      
       // Call API to generate response
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-response`, {
+      const response = await fetch(`https://gnrtzeqsndhqweibljtf.supabase.co/functions/v1/generate-response`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducnR6ZXFzbmRocXdlaWJsanRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MTE2MzgsImV4cCI6MjA2MDQ4NzYzOH0.xzlNMzQt0tRsu1wQU8EMLe3qkV0ZT8QBC3Pgaf8wxYo`
         },
         body: JSON.stringify({
           message,
@@ -245,11 +270,30 @@ const EditChatbot = () => {
         
       if (chatError) throw chatError;
       
-      const formattedChatHistory: ChatMessage[] = (updatedChatData || []).map(msg => ({
-        ...msg,
-        created_at: new Date(msg.created_at),
-        sender: msg.sender as 'user' | 'bot'
-      }));
+      // Process the sources data to ensure it matches our expected format
+      const formattedChatHistory: ChatMessage[] = (updatedChatData || []).map(msg => {
+        let parsedSources = [];
+        
+        if (msg.sources) {
+          try {
+            if (typeof msg.sources === 'string') {
+              parsedSources = JSON.parse(msg.sources);
+            } else {
+              parsedSources = Array.isArray(msg.sources) ? msg.sources : [];
+            }
+          } catch (e) {
+            console.error("Error parsing sources:", e);
+            parsedSources = [];
+          }
+        }
+        
+        return {
+          ...msg,
+          created_at: new Date(msg.created_at),
+          sender: msg.sender as 'user' | 'bot',
+          sources: parsedSources
+        };
+      });
       
       setChatHistory(formattedChatHistory);
       
@@ -268,6 +312,7 @@ const EditChatbot = () => {
         session_id: previewSessionId,
         text: "I'm sorry, I encountered an error while processing your request. Please try again.",
         sender: "bot",
+        sources: [],
         created_at: new Date()
       };
       
