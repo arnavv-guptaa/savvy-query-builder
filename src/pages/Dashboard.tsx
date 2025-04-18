@@ -1,80 +1,58 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Chatbot } from "@/types";
+import { useMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import Nav from "@/components/Nav";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Plus, ChevronRight, Link, Trash2, 
-  Settings, PlusCircle, Loader2 
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  AlertDialog,
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle 
-} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MessageSquare, Plus, Loader2, Settings, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const isMobile = useMobile();
+  
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [newChatbotName, setNewChatbotName] = useState("");
+  const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
+  const [newChatbotName, setNewChatbotName] = useState<string>("");
+  const [isCreating, setIsCreating] = useState<boolean>(false);
   const [selectedChatbot, setSelectedChatbot] = useState<Chatbot | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showNewDialog, setShowNewDialog] = useState(false);
-  const [shareLink, setShareLink] = useState("");
-  const [showShareDialog, setShowShareDialog] = useState(false);
-
+  const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  
   useEffect(() => {
     const fetchChatbots = async () => {
       try {
         setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          navigate("/auth");
-          return;
-        }
         
         const { data, error } = await supabase
-          .from("chatbots")  // Changed from "query.chatbots"
+          .from("chatbots")
           .select("*")
           .order("created_at", { ascending: false });
           
         if (error) throw error;
         
-        setChatbots(data || []);
+        // Convert date strings to Date objects
+        const formattedChatbots: Chatbot[] = (data || []).map(chatbot => ({
+          ...chatbot,
+          created_at: new Date(chatbot.created_at),
+          updated_at: new Date(chatbot.updated_at),
+          tone: chatbot.tone as 'professional' | 'friendly' | 'concise'
+        }));
+        
+        setChatbots(formattedChatbots);
       } catch (error) {
         console.error("Error fetching chatbots:", error);
         toast({
           title: "Error",
-          description: "Failed to load your chatbots. Please refresh the page.",
+          description: "Failed to load your chatbots. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -83,16 +61,7 @@ const Dashboard = () => {
     };
     
     fetchChatbots();
-    
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        navigate("/auth");
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
   
   const handleCreateChatbot = async () => {
     if (!newChatbotName.trim()) {
@@ -107,35 +76,38 @@ const Dashboard = () => {
     try {
       setIsCreating(true);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-      
       const { data, error } = await supabase
-        .from("chatbots")  // Changed from "query.chatbots"
+        .from("chatbots")
         .insert({
           name: newChatbotName,
           welcome_message: "Hello! How can I help you today?",
           primary_color: "#7E69AB",
-          tone: "professional",
-          max_tokens: 2048,
-          include_sources: true
+          tone: "professional"
         })
         .select()
         .single();
         
       if (error) throw error;
       
-      setChatbots(prev => [data, ...prev]);
+      // Convert date strings to Date objects
+      const newChatbot: Chatbot = {
+        ...data,
+        created_at: new Date(data.created_at),
+        updated_at: new Date(data.updated_at),
+        tone: data.tone as 'professional' | 'friendly' | 'concise'
+      };
+      
+      setChatbots(prev => [newChatbot, ...prev]);
+      setShowCreateDialog(false);
       setNewChatbotName("");
-      setShowNewDialog(false);
       
-      // Navigate to the edit page
-      navigate(`/chatbot/edit/${data.id}`);
+      // Navigate to the edit page for the new chatbot
+      navigate(`/chatbot/${data.id}/edit`);
       
+      toast({
+        title: "Success",
+        description: "Chatbot created successfully."
+      });
     } catch (error) {
       console.error("Error creating chatbot:", error);
       toast({
@@ -155,13 +127,13 @@ const Dashboard = () => {
       setIsDeleting(true);
       
       const { error } = await supabase
-        .from("chatbots")  // Changed from "query.chatbots"
+        .from("chatbots")
         .delete()
         .eq("id", selectedChatbot.id);
         
       if (error) throw error;
       
-      setChatbots(prev => prev.filter(b => b.id !== selectedChatbot.id));
+      setChatbots(chatbots.filter(chatbot => chatbot.id !== selectedChatbot.id));
       setShowDeleteDialog(false);
       setSelectedChatbot(null);
       
@@ -169,7 +141,6 @@ const Dashboard = () => {
         title: "Success",
         description: "Chatbot deleted successfully."
       });
-      
     } catch (error) {
       console.error("Error deleting chatbot:", error);
       toast({
@@ -182,57 +153,40 @@ const Dashboard = () => {
     }
   };
   
-  const handleShareChatbot = (chatbot: Chatbot) => {
-    const shareLink = `${window.location.origin}/chatbot/${chatbot.share_id}`;
-    setShareLink(shareLink);
-    setShowShareDialog(true);
-  };
-  
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink);
-    toast({
-      title: "Success",
-      description: "Link copied to clipboard."
-    });
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
       
       <main className="flex-1 container py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Your Chatbots</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">AI Chatbots</h1>
           
-          <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Chatbot
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Chatbot
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Chatbot</DialogTitle>
+                <DialogTitle>Create a new AI Chatbot</DialogTitle>
                 <DialogDescription>
-                  Give your chatbot a name to get started. You can customize it further later.
+                  Give your chatbot a name. You can customize it further after creation.
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Chatbot Name</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="E.g., Customer Support Assistant" 
-                    value={newChatbotName}
-                    onChange={(e) => setNewChatbotName(e.target.value)}
-                  />
-                </div>
+              <div className="py-4">
+                <Input
+                  placeholder="Chatbot name"
+                  value={newChatbotName}
+                  onChange={(e) => setNewChatbotName(e.target.value)}
+                  className="w-full"
+                />
               </div>
               
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowNewDialog(false)}>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel
                 </Button>
                 <Button onClick={handleCreateChatbot} disabled={isCreating}>
@@ -242,13 +196,10 @@ const Dashboard = () => {
                       Creating...
                     </>
                   ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Create
-                    </>
+                    "Create"
                   )}
                 </Button>
-              </div>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
@@ -258,82 +209,86 @@ const Dashboard = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : chatbots.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-muted/50">
-            <h2 className="text-xl font-medium mb-2">No Chatbots Yet</h2>
-            <p className="text-muted-foreground mb-4">
-              Create your first AI chatbot to get started
-            </p>
-            <Button onClick={() => setShowNewDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Your First Chatbot
-            </Button>
-          </div>
+          <Card className="text-center p-8">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <MessageSquare className="h-12 w-12 text-muted-foreground" />
+              <CardTitle>No chatbots yet</CardTitle>
+              <CardDescription>
+                Create your first AI chatbot to get started.
+              </CardDescription>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Chatbot
+              </Button>
+            </div>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {chatbots.map((chatbot) => (
-              <Card key={chatbot.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div 
-                    className="w-10 h-10 rounded-md mb-2 flex items-center justify-center text-white font-semibold"
-                    style={{ backgroundColor: chatbot.primary_color }}
-                  >
-                    {chatbot.name.charAt(0)}
+              <Card key={chatbot.id} className="flex flex-col">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="truncate">{chatbot.name}</CardTitle>
+                      <CardDescription>
+                        Created {chatbot.created_at.toLocaleDateString()}
+                      </CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedChatbot(chatbot);
+                            setShowDeleteDialog(true);
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <CardTitle className="text-lg">{chatbot.name}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {chatbot.description || "No description"}
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Tone:</span> 
+                <CardContent className="flex-1">
+                  <div 
+                    className="w-full h-2 rounded-full mb-4"
+                    style={{ backgroundColor: chatbot.primary_color }}
+                  />
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Tone:</span>
                       <span className="capitalize">{chatbot.tone}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Created:</span> 
-                      <span>{new Date(chatbot.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Sources:</span>
+                      <span>{chatbot.include_sources ? "Enabled" : "Disabled"}</span>
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-between pt-2">
+                <CardFooter className="flex justify-between gap-2 pt-2">
                   <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate(`/chatbot/edit/${chatbot.id}`)}
+                    className="flex-1"
+                    variant="default"
+                    onClick={() => navigate(`/chatbot/${chatbot.id}/edit`)}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Edit
                   </Button>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleShareChatbot(chatbot)}>
-                        <Link className="mr-2 h-4 w-4" />
-                        Share
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate(`/chatbot/${chatbot.share_id}`)}>
-                        <ChevronRight className="mr-2 h-4 w-4" />
-                        Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => {
-                          setSelectedChatbot(chatbot);
-                          setShowDeleteDialog(true);
-                        }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button 
+                    className="flex-1"
+                    variant="outline"
+                    onClick={() => window.open(`/chatbot/${chatbot.share_id}`, '_blank')}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Preview
+                  </Button>
                 </CardFooter>
               </Card>
             ))}
@@ -341,41 +296,20 @@ const Dashboard = () => {
         )}
       </main>
       
-      {/* Share Link Dialog */}
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Share Chatbot</DialogTitle>
-            <DialogDescription>
-              Share this link with anyone you want to access this chatbot.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex items-center space-x-2">
-            <Input value={shareLink} readOnly className="flex-1" />
-            <Button onClick={handleCopyLink}>
-              Copy
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Chatbot</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the chatbot "{selectedChatbot?.name}" and all associated data.
-              This action cannot be undone.
+              Are you sure you want to delete "{selectedChatbot?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteChatbot}
+              className="bg-destructive hover:bg-destructive/90"
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? (
                 <>
@@ -383,7 +317,7 @@ const Dashboard = () => {
                   Deleting...
                 </>
               ) : (
-                <>Delete</>
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

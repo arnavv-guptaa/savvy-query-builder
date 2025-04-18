@@ -24,7 +24,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     const requestData = await req.json();
-    const { chatbotId, sessionId, message, documents = [] } = requestData;
+    const { chatbotId, sessionId, message, documentIds = [] } = requestData;
     
     if (!chatbotId || !sessionId || !message) {
       return new Response(
@@ -83,22 +83,46 @@ serve(async (req) => {
       // Continue anyway
     }
     
+    // Fetch document data if documentIds provided
+    let documentData = [];
+    if (documentIds && documentIds.length > 0) {
+      const { data: documents, error: documentsError } = await supabase
+        .from('documents')
+        .select('*')
+        .in('id', documentIds)
+        .eq('status', 'completed');
+        
+      if (documentsError) {
+        console.error('Error fetching documents:', documentsError);
+      } else {
+        documentData = documents || [];
+      }
+    }
+    
     // Format previous messages for context
     const context = (previousMessages || []).map(msg => {
       return `${msg.sender === 'user' ? 'Human' : 'Assistant'}: ${msg.text}`;
     }).join('\n');
     
     // Format document content for context
-    const documentContext = documents.length > 0 
-      ? `\nRelevant documents:\n${documents.map(doc => `Document: ${doc.name}\nContent: ${doc.content}`).join('\n\n')}`
+    // In a real implementation, we would fetch actual document content 
+    // Here we'll simulate it with document metadata
+    const documentContext = documentData.length > 0 
+      ? `\nRelevant documents:\n${documentData.map(doc => 
+          `Document: ${doc.name}\nType: ${doc.type}\nSize: ${doc.size} bytes\nStatus: ${doc.status}\nChunks: ${doc.chunks || 'Unknown'}`
+        ).join('\n\n')}`
       : '';
     
     // Prepare system prompt based on chatbot settings
-    let systemPrompt = `You are an AI assistant that helps people find information. Your name is Query.\n`;
+    let systemPrompt = `You are an AI assistant that helps people find information. Your name is ${chatbotData.name}.\n`;
     systemPrompt += `Your tone should be ${chatbotData.tone || 'professional'}.\n`;
     
-    if (chatbotData.include_sources && documents.length > 0) {
+    if (chatbotData.include_sources && documentData.length > 0) {
       systemPrompt += `When referring to information from documents, cite your sources at the end of your response in a "Sources:" section.\n`;
+    }
+
+    if (chatbotData.description) {
+      systemPrompt += `Additional context: ${chatbotData.description}\n`;
     }
     
     // Construct API request for Claude
@@ -143,12 +167,12 @@ serve(async (req) => {
     // Extract sources if they exist in the response
     let sources = null;
     
-    if (chatbotData.include_sources && documents.length > 0) {
+    if (chatbotData.include_sources && documentData.length > 0) {
       // Simple pattern to extract sources section if it exists
       const sourceMatch = aiResponse.match(/Sources:([\s\S]+)$/);
       if (sourceMatch) {
         // Convert sources to the format we need for storage
-        sources = documents.map(doc => ({
+        sources = documentData.map(doc => ({
           documentId: doc.id,
           documentName: doc.name,
           relevance: 0.9 // Default relevance value

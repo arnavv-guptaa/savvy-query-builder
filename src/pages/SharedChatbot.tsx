@@ -23,7 +23,7 @@ const SharedChatbot = () => {
         setIsLoading(true);
         // Fetch chatbot by share_id
         const { data: chatbotData, error: chatbotError } = await supabase
-          .from("query.chatbots")
+          .from("chatbots")
           .select("*")
           .eq("share_id", shareId)
           .single();
@@ -32,26 +32,49 @@ const SharedChatbot = () => {
 
         // Fetch documents for this chatbot
         const { data: documentsData, error: documentsError } = await supabase
-          .from("query.documents")
+          .from("documents")
           .select("*")
           .eq("chatbot_id", chatbotData?.id)
           .eq("status", "completed");
 
         if (documentsError) throw documentsError;
 
-        setChatbot(chatbotData);
-        setDocuments(documentsData || []);
+        // Convert string dates to Date objects
+        const formattedChatbot: Chatbot = {
+          ...chatbotData,
+          created_at: new Date(chatbotData.created_at),
+          updated_at: new Date(chatbotData.updated_at),
+          tone: chatbotData.tone as 'professional' | 'friendly' | 'concise'
+        };
+
+        const formattedDocuments: Document[] = (documentsData || []).map(doc => ({
+          ...doc,
+          created_at: new Date(doc.created_at),
+          updated_at: new Date(doc.updated_at),
+          type: doc.type as 'pdf' | 'docx' | 'txt' | 'url',
+          status: doc.status as 'processing' | 'completed' | 'failed'
+        }));
+
+        setChatbot(formattedChatbot);
+        setDocuments(formattedDocuments);
 
         // Fetch existing chat history for this session
         const { data: chatData, error: chatError } = await supabase
-          .from("query.chat_messages")
+          .from("chat_messages")
           .select("*")
           .eq("chatbot_id", chatbotData?.id)
           .eq("session_id", sessionId)
           .order("created_at", { ascending: true });
 
         if (chatError) throw chatError;
-        setChatHistory(chatData || []);
+
+        const formattedChatHistory: ChatMessage[] = (chatData || []).map(msg => ({
+          ...msg,
+          created_at: new Date(msg.created_at),
+          sender: msg.sender as 'user' | 'bot'
+        }));
+
+        setChatHistory(formattedChatHistory);
       } catch (error) {
         console.error("Error fetching chatbot:", error);
         toast({
@@ -111,14 +134,21 @@ const SharedChatbot = () => {
       
       // Refresh chat history from database to get the persisted messages
       const { data: updatedChatData, error: chatError } = await supabase
-        .from("query.chat_messages")
+        .from("chat_messages")
         .select("*")
         .eq("chatbot_id", chatbot.id)
         .eq("session_id", sessionId)
         .order("created_at", { ascending: true });
         
       if (chatError) throw chatError;
-      setChatHistory(updatedChatData || []);
+      
+      const formattedChatHistory: ChatMessage[] = (updatedChatData || []).map(msg => ({
+        ...msg,
+        created_at: new Date(msg.created_at),
+        sender: msg.sender as 'user' | 'bot'
+      }));
+      
+      setChatHistory(formattedChatHistory);
       
     } catch (error) {
       console.error("Error generating response:", error);

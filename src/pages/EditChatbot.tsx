@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,16 +41,9 @@ const EditChatbot = () => {
       try {
         setIsLoading(true);
         
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          navigate("/auth");
-          return;
-        }
-        
         // Fetch chatbot by ID
         const { data: chatbotData, error: chatbotError } = await supabase
-          .from("chatbots")  // Changed from "query.chatbots"
+          .from("chatbots")
           .select("*")
           .eq("id", id)
           .single();
@@ -71,24 +65,40 @@ const EditChatbot = () => {
         
         // Fetch documents for this chatbot
         const { data: documentsData, error: documentsError } = await supabase
-          .from("documents")  // Changed from "query.documents"
+          .from("documents")
           .select("*")
           .eq("chatbot_id", id)
           .order("created_at", { ascending: false });
         
         if (documentsError) throw documentsError;
         
-        setChatbot(chatbotData);
+        // Convert string dates to Date objects
+        const formattedChatbot: Chatbot = {
+          ...chatbotData,
+          created_at: new Date(chatbotData.created_at),
+          updated_at: new Date(chatbotData.updated_at),
+          tone: chatbotData.tone as 'professional' | 'friendly' | 'concise'
+        };
+
+        const formattedDocuments: Document[] = (documentsData || []).map(doc => ({
+          ...doc,
+          created_at: new Date(doc.created_at),
+          updated_at: new Date(doc.updated_at),
+          type: doc.type as 'pdf' | 'docx' | 'txt' | 'url',
+          status: doc.status as 'processing' | 'completed' | 'failed'
+        }));
+        
+        setChatbot(formattedChatbot);
         setSettings({
           name: chatbotData.name,
           description: chatbotData.description || "",
           welcome_message: chatbotData.welcome_message,
           primary_color: chatbotData.primary_color,
-          tone: chatbotData.tone,
+          tone: chatbotData.tone as 'professional' | 'friendly' | 'concise',
           max_tokens: chatbotData.max_tokens,
           include_sources: chatbotData.include_sources
         });
-        setDocuments(documentsData || []);
+        setDocuments(formattedDocuments);
         
       } catch (error) {
         console.error("Error fetching chatbot data:", error);
@@ -194,7 +204,7 @@ const EditChatbot = () => {
     
     try {
       // Add user message to state immediately for better UX
-      const userMessage = {
+      const userMessage: ChatMessage = {
         id: `temp-${Date.now()}-user`,
         chatbot_id: chatbot.id,
         session_id: previewSessionId,
@@ -234,7 +244,14 @@ const EditChatbot = () => {
         .order("created_at", { ascending: true });
         
       if (chatError) throw chatError;
-      setChatHistory(updatedChatData || []);
+      
+      const formattedChatHistory: ChatMessage[] = (updatedChatData || []).map(msg => ({
+        ...msg,
+        created_at: new Date(msg.created_at),
+        sender: msg.sender as 'user' | 'bot'
+      }));
+      
+      setChatHistory(formattedChatHistory);
       
     } catch (error) {
       console.error("Error generating response:", error);
@@ -245,7 +262,7 @@ const EditChatbot = () => {
       });
       
       // If an error occurs, add a fallback bot message
-      const errorMessage = {
+      const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         chatbot_id: chatbot.id,
         session_id: previewSessionId,
