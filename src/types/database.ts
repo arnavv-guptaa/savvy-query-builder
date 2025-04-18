@@ -1,14 +1,7 @@
 
 export type QueryDatabase = {
-  profiles: {
-    id: string;
-    email: string;
-    created_at: string;
-    updated_at: string;
-  };
   chatbots: {
     id: string;
-    user_id: string;
     name: string;
     description: string | null;
     welcome_message: string;

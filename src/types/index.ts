@@ -15,7 +15,6 @@ export interface Document {
 
 export interface Chatbot {
   id: string;
-  user_id: string;
   name: string;
   description?: string | null;
   welcome_message: string;
@@ -42,4 +41,4 @@ export interface ChatMessage {
   created_at: Date;
 }
 
-export interface ChatbotSettings extends Omit<Chatbot, 'id' | 'user_id' | 'share_id' | 'created_at' | 'updated_at'> {}
+export interface ChatbotSettings extends Omit<Chatbot, 'id' | 'share_id' | 'created_at' | 'updated_at'> {}
