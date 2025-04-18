@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Chatbot, Document, ChatbotSettings } from "@/types";
+import { Chatbot, Document, ChatbotSettings, ChatMessage } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import Nav from "@/components/Nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,10 +49,9 @@ const EditChatbot = () => {
         
         // Fetch chatbot by ID
         const { data: chatbotData, error: chatbotError } = await supabase
-          .from("query.chatbots")
+          .from("chatbots")  // Changed from "query.chatbots"
           .select("*")
           .eq("id", id)
-          .eq("user_id", user.id)
           .single();
         
         if (chatbotError) {
@@ -73,7 +71,7 @@ const EditChatbot = () => {
         
         // Fetch documents for this chatbot
         const { data: documentsData, error: documentsError } = await supabase
-          .from("query.documents")
+          .from("documents")  // Changed from "query.documents"
           .select("*")
           .eq("chatbot_id", id)
           .order("created_at", { ascending: false });
@@ -128,7 +126,7 @@ const EditChatbot = () => {
   const handleDeleteDocument = async (documentId: string) => {
     try {
       const { error } = await supabase
-        .from("query.documents")
+        .from("documents")
         .delete()
         .eq("id", documentId);
         
@@ -159,7 +157,7 @@ const EditChatbot = () => {
     
     try {
       const { error } = await supabase
-        .from("query.chatbots")
+        .from("chatbots")
         .update({
           name: settings.name,
           description: settings.description,
@@ -229,7 +227,7 @@ const EditChatbot = () => {
       
       // Get most recent chat history from database
       const { data: updatedChatData, error: chatError } = await supabase
-        .from("query.chat_messages")
+        .from("chat_messages")
         .select("*")
         .eq("chatbot_id", chatbot.id)
         .eq("session_id", previewSessionId)

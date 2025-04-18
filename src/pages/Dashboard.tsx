@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,9 +63,8 @@ const Dashboard = () => {
         }
         
         const { data, error } = await supabase
-          .from("query.chatbots")
+          .from("chatbots")  // Changed from "query.chatbots"
           .select("*")
-          .eq("user_id", user.id)
           .order("created_at", { ascending: false });
           
         if (error) throw error;
@@ -117,9 +115,8 @@ const Dashboard = () => {
       }
       
       const { data, error } = await supabase
-        .from("query.chatbots")
+        .from("chatbots")  // Changed from "query.chatbots"
         .insert({
-          user_id: user.id,
           name: newChatbotName,
           welcome_message: "Hello! How can I help you today?",
           primary_color: "#7E69AB",
@@ -158,7 +155,7 @@ const Dashboard = () => {
       setIsDeleting(true);
       
       const { error } = await supabase
-        .from("query.chatbots")
+        .from("chatbots")  // Changed from "query.chatbots"
         .delete()
         .eq("id", selectedChatbot.id);
         

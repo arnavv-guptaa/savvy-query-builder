@@ -59,7 +59,6 @@ export type Database = {
           share_id: string
           tone: string
           updated_at: string
-          user_id: string
           welcome_message: string
         }
         Insert: {
@@ -73,7 +72,6 @@ export type Database = {
           share_id?: string
           tone?: string
           updated_at?: string
-          user_id: string
           welcome_message?: string
         }
         Update: {
@@ -87,7 +85,6 @@ export type Database = {
           share_id?: string
           tone?: string
           updated_at?: string
-          user_id?: string
           welcome_message?: string
         }
         Relationships: []
@@ -141,27 +138,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {
