@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,12 +33,7 @@ const Auth = () => {
       
       const { error } = await supabase.auth.signUp({
         email,
-        password,
-        options: {
-          data: {
-            email
-          }
-        }
+        password
       });
       
       if (error) throw error;
