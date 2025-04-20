@@ -22,54 +22,42 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
 
       // Create document records in processing state
       const newDocuments: Document[] = files.map((file) => ({
-        id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: crypto.randomUUID(),
         chatbot_id: chatbotId,
         name: file.name,
-        type: file.name.endsWith('.pdf') ? 'pdf' : 
-              file.name.endsWith('.docx') ? 'docx' : 'txt',
+        type: file.name.split('.').pop()?.toLowerCase() as 'pdf' | 'docx' | 'txt' | 'url',
         size: file.size,
         status: 'processing',
+        chunks: null,
+        upload_path: null,
+        url: null,
         created_at: new Date(),
         updated_at: new Date()
       }));
 
       // Add the documents to the database
-      const documentsToInsert = newDocuments.map(doc => ({
-        id: doc.id,
-        chatbot_id: doc.chatbot_id,
-        name: doc.name,
-        type: doc.type,
-        size: doc.size,
-        status: doc.status,
-        created_at: doc.created_at.toISOString(),
-        updated_at: doc.updated_at.toISOString()
-      }));
+      for (const doc of newDocuments) {
+        const { error } = await supabase
+          .from("documents")
+          .insert({
+            id: doc.id,
+            chatbot_id: doc.chatbot_id,
+            name: doc.name,
+            type: doc.type,
+            size: doc.size,
+            status: doc.status,
+            created_at: doc.created_at.toISOString(),
+            updated_at: doc.updated_at.toISOString()
+          });
 
-      const { data, error } = await supabase
-        .from("documents")
-        .insert(documentsToInsert)
-        .select();
-
-      if (error) {
-        console.error("Error inserting documents:", error);
-        throw error;
+        if (error) {
+          console.error("Error inserting document:", error);
+          throw error;
+        }
       }
 
-      console.log("Documents inserted successfully:", data);
-
-      // Format the returned documents
-      const formattedDocs: Document[] = data.map(doc => ({
-        ...doc,
-        created_at: new Date(doc.created_at),
-        updated_at: new Date(doc.updated_at),
-        type: doc.type as 'pdf' | 'docx' | 'txt' | 'url',
-        status: doc.status as 'processing' | 'completed' | 'failed',
-        chunks: doc.chunks || null,
-        upload_path: doc.upload_path || null,
-        url: doc.url || null
-      }));
-
-      onDocumentsAdded(formattedDocs);
+      console.log("Documents inserted successfully");
+      onDocumentsAdded(newDocuments);
       
       toast({
         title: "Documents uploaded",
@@ -79,9 +67,9 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
       // Simulate processing completion after delay
       setTimeout(async () => {
         // Update status to completed 
-        const updatedDocs = formattedDocs.map(doc => ({
-          id: doc.id,
-          status: 'completed',
+        const updatedDocs = newDocuments.map(doc => ({
+          ...doc,
+          status: 'completed' as const,
           chunks: Math.floor(Math.random() * 30) + 5
         }));
 
@@ -89,18 +77,15 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
         for (const doc of updatedDocs) {
           await supabase
             .from("documents")
-            .update(doc)
+            .update({
+              status: 'completed',
+              chunks: doc.chunks
+            })
             .eq("id", doc.id);
         }
 
         // Update the documents in the UI
-        const completedDocs = formattedDocs.map(doc => ({
-          ...doc,
-          status: 'completed' as const,
-          chunks: Math.floor(Math.random() * 30) + 5
-        }));
-
-        onDocumentsAdded(completedDocs);
+        onDocumentsAdded(updatedDocs);
       }, 3000);
 
     } catch (error) {
@@ -123,19 +108,21 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
       console.log("URL added:", url);
 
       const newDocument: Document = {
-        id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: crypto.randomUUID(),
         chatbot_id: chatbotId,
         name: url,
         type: 'url',
         size: 0,
         status: 'processing',
+        chunks: null,
+        upload_path: null,
         url: url,
         created_at: new Date(),
         updated_at: new Date()
       };
 
       // Add the document to the database
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("documents")
         .insert({
           id: newDocument.id,
@@ -147,30 +134,15 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
           url: newDocument.url,
           created_at: newDocument.created_at.toISOString(),
           updated_at: newDocument.updated_at.toISOString()
-        })
-        .select()
-        .single();
+        });
 
       if (error) {
         console.error("Error inserting URL document:", error);
         throw error;
       }
 
-      console.log("URL document inserted successfully:", data);
-
-      // Format the returned document
-      const formattedDoc: Document = {
-        ...data,
-        created_at: new Date(data.created_at),
-        updated_at: new Date(data.updated_at),
-        type: data.type as 'pdf' | 'docx' | 'txt' | 'url',
-        status: data.status as 'processing' | 'completed' | 'failed',
-        chunks: data.chunks || null,
-        upload_path: data.upload_path || null,
-        url: data.url || null
-      };
-
-      onDocumentsAdded([formattedDoc]);
+      console.log("URL document inserted successfully");
+      onDocumentsAdded([newDocument]);
       
       toast({
         title: "Website added",
@@ -181,8 +153,8 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
       setTimeout(async () => {
         // Update status to completed
         const updatedDoc = {
-          id: formattedDoc.id,
-          status: 'completed',
+          ...newDocument,
+          status: 'completed' as const,
           size: Math.floor(Math.random() * 2000000) + 500000,
           chunks: Math.floor(Math.random() * 20) + 3
         };
@@ -190,18 +162,15 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
         // Update the document in the database
         await supabase
           .from("documents")
-          .update(updatedDoc)
-          .eq("id", formattedDoc.id);
+          .update({
+            status: 'completed',
+            size: updatedDoc.size,
+            chunks: updatedDoc.chunks
+          })
+          .eq("id", newDocument.id);
 
         // Update the document in the UI
-        const completedDoc = {
-          ...formattedDoc,
-          status: 'completed' as const,
-          size: Math.floor(Math.random() * 2000000) + 500000,
-          chunks: Math.floor(Math.random() * 20) + 3
-        };
-
-        onDocumentsAdded([completedDoc]);
+        onDocumentsAdded([updatedDoc]);
       }, 4000);
     } catch (error) {
       console.error("Error adding URL:", error);

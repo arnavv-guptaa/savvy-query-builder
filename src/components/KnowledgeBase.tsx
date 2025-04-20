@@ -21,14 +21,14 @@ const KnowledgeBase = ({ documents, onDeleteDocument }: KnowledgeBaseProps) => {
     
     // Process documents to get the unique ones by ID
     documents.forEach(doc => {
-      // Only add if not already in the map or if the existing document has an older timestamp
-      if (!documentsMap.has(doc.id) || 
-          documentsMap.get(doc.id)!.updated_at < doc.updated_at) {
-        documentsMap.set(doc.id, doc);
-      }
+      documentsMap.set(doc.id, doc);
     });
     
-    setUniqueDocuments(Array.from(documentsMap.values()));
+    // Convert the map values to an array and sort by creation date (newest first)
+    const sortedDocuments = Array.from(documentsMap.values())
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+    
+    setUniqueDocuments(sortedDocuments);
   }, [documents]);
   
   const filteredDocuments = uniqueDocuments.filter(doc => 
