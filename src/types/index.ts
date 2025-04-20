@@ -37,4 +37,12 @@ export interface ChatMessage {
   created_at: Date;
 }
 
-export interface ChatbotSettings extends Omit<Chatbot, 'id' | 'share_id' | 'created_at' | 'updated_at'> {}
+export interface ChatbotSettings {
+  name: string;
+  description: string;
+  welcome_message: string;
+  primary_color: string;
+  tone: 'professional' | 'friendly' | 'concise';
+  max_tokens: number;
+  include_sources: boolean;
+}

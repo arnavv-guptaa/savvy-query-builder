@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +15,7 @@ interface CustomizationPanelProps {
   chatbot?: Chatbot;
   settings: ChatbotSettings;
   onSettingsChange: (settings: ChatbotSettings) => void;
-  onSave?: (settings: ChatbotSettings) => Promise<void>;
+  onSave?: (settings: Partial<Chatbot>) => Promise<void>;
 }
 
 const CustomizationPanel = ({ 

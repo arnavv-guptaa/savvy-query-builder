@@ -38,6 +38,7 @@ const ChatInterface = ({
     e.preventDefault();
     if (message.trim() && !isLoading) {
       try {
+        setIsLoading(true);
         onSendMessage(message);
         setMessage("");
       } catch (error) {
@@ -46,11 +47,15 @@ const ChatInterface = ({
           description: "Failed to send message. Please try again.",
           variant: "destructive"
         });
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
   const renderSource = (source: ChatMessage["sources"][0]) => {
+    if (!source) return null;
+    
     const document = documents.find(doc => doc.id === source.documentId);
     if (!document) return null;
 
@@ -65,7 +70,7 @@ const ChatInterface = ({
   };
 
   return (
-    <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card">
+    <div className="flex flex-col h-[600px] border rounded-lg overflow-hidden bg-card">
       <div className="p-3 border-b bg-muted/50 flex items-center">
         <div 
           className="w-8 h-8 rounded-full mr-2 flex items-center justify-center text-white font-semibold"
@@ -88,9 +93,11 @@ const ChatInterface = ({
           chatHistory.map((msg) => (
             <div key={msg.id} className="flex flex-col">
               <div
-                className={`chat-bubble ${
-                  msg.sender === "user" ? "user" : "bot"
-                }`}
+                className={`${
+                  msg.sender === "user" 
+                    ? "bg-muted ml-auto max-w-[80%] rounded-l-lg rounded-tr-lg" 
+                    : "bg-primary text-primary-foreground mr-auto max-w-[80%] rounded-r-lg rounded-tl-lg"
+                } p-3`}
               >
                 <div>{msg.text}</div>
                 {msg.sender === "bot" && msg.sources && msg.sources.length > 0 && settings.include_sources && (
