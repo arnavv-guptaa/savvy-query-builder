@@ -7,12 +7,14 @@ import { ChatMessage, Document, ChatbotSettings } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatInterfaceProps {
   chatHistory: ChatMessage[];
   documents: Document[];
   settings: ChatbotSettings;
   onSendMessage: (message: string) => void;
+  updateChatHistory?: (messages: ChatMessage[]) => void;
 }
 
 const ChatInterface = ({
@@ -20,6 +22,7 @@ const ChatInterface = ({
   documents,
   settings,
   onSendMessage,
+  updateChatHistory,
 }: ChatInterfaceProps) => {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -34,14 +37,71 @@ const ChatInterface = ({
     scrollToBottom();
   }, [chatHistory]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !isLoading) {
       try {
         setIsLoading(true);
-        onSendMessage(message);
+        
+        // Create a unique session ID if not already using one
+        let sessionId = "";
+        if (chatHistory.length > 0) {
+          sessionId = chatHistory[0].session_id;
+        } else {
+          sessionId = `session-${Date.now()}`;
+        }
+        
+        // Create a new user message
+        const userMessage: ChatMessage = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          chatbot_id: settings.name, // Using name as ID for now
+          session_id: sessionId,
+          text: message,
+          sender: 'user',
+          created_at: new Date(),
+        };
+        
+        // Add user message to chat history via the parent component if available
+        if (updateChatHistory) {
+          updateChatHistory([...chatHistory, userMessage]);
+        }
+        
+        // Call the generate-response edge function
+        const { data, error } = await supabase.functions.invoke('generate-response', {
+          body: {
+            chatbotId: userMessage.chatbot_id,
+            sessionId: userMessage.session_id,
+            message: userMessage.text,
+            documentIds: documents.map(doc => doc.id)
+          }
+        });
+        
+        if (error) {
+          throw new Error(`Error calling generate-response: ${error.message}`);
+        }
+        
+        // Create bot message from response
+        const botMessage: ChatMessage = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          chatbot_id: userMessage.chatbot_id,
+          session_id: userMessage.session_id,
+          text: data.response,
+          sender: 'bot',
+          sources: data.sources,
+          created_at: new Date(),
+        };
+        
+        // Update chat history with the bot response
+        if (updateChatHistory) {
+          updateChatHistory([...chatHistory, userMessage, botMessage]);
+        } else {
+          // If updateChatHistory not provided, use the onSendMessage callback
+          onSendMessage(message);
+        }
+        
         setMessage("");
       } catch (error) {
+        console.error("Error sending message:", error);
         toast({
           title: "Error",
           description: "Failed to send message. Please try again.",

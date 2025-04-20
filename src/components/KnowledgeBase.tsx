@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Document } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +12,28 @@ interface KnowledgeBaseProps {
 
 const KnowledgeBase = ({ documents, onDeleteDocument }: KnowledgeBaseProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [deduplicatedDocuments, setDeduplicatedDocuments] = useState<Document[]>([]);
   
-  const filteredDocuments = documents.filter(doc => 
+  // Deduplicate documents by ID, keeping the most updated version
+  useEffect(() => {
+    const documentsMap = new Map<string, Document>();
+    
+    // Sort by updated_at to ensure we get the latest status
+    const sortedDocs = [...documents].sort((a, b) => 
+      b.updated_at.getTime() - a.updated_at.getTime()
+    );
+    
+    // Only keep the first occurrence of each document ID
+    sortedDocs.forEach(doc => {
+      if (!documentsMap.has(doc.name)) {
+        documentsMap.set(doc.name, doc);
+      }
+    });
+    
+    setDeduplicatedDocuments(Array.from(documentsMap.values()));
+  }, [documents]);
+  
+  const filteredDocuments = deduplicatedDocuments.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
