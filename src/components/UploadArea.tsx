@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { FileInput } from "@/components/ui/file-input";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Document } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,9 +11,16 @@ interface UploadAreaProps {
 }
 
 const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
+  const [uploading, setUploading] = useState(false);
+
   const handleFilesSelected = async (files: File[]) => {
+    if (files.length === 0) return;
+    
     try {
-      // First, create document records in pending state
+      setUploading(true);
+      console.log("Files selected:", files.map(f => f.name));
+
+      // Create document records in processing state
       const newDocuments: Document[] = files.map((file) => ({
         id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         chatbot_id: chatbotId,
@@ -28,7 +35,12 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
 
       // Add the documents to the database
       const documentsToInsert = newDocuments.map(doc => ({
-        ...doc,
+        id: doc.id,
+        chatbot_id: doc.chatbot_id,
+        name: doc.name,
+        type: doc.type,
+        size: doc.size,
+        status: doc.status,
         created_at: doc.created_at.toISOString(),
         updated_at: doc.updated_at.toISOString()
       }));
@@ -38,7 +50,12 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
         .insert(documentsToInsert)
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting documents:", error);
+        throw error;
+      }
+
+      console.log("Documents inserted successfully:", data);
 
       // Format the returned documents
       const formattedDocs: Document[] = data.map(doc => ({
@@ -85,6 +102,7 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
 
         onDocumentsAdded(completedDocs);
       }, 3000);
+
     } catch (error) {
       console.error("Error uploading documents:", error);
       toast({
@@ -92,11 +110,18 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
         description: "Failed to upload documents. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleUrlAdded = async (url: string) => {
+    if (!url.trim()) return;
+    
     try {
+      setUploading(true);
+      console.log("URL added:", url);
+
       const newDocument: Document = {
         id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         chatbot_id: chatbotId,
@@ -113,14 +138,25 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
       const { data, error } = await supabase
         .from("documents")
         .insert({
-          ...newDocument,
+          id: newDocument.id,
+          chatbot_id: newDocument.chatbot_id,
+          name: newDocument.name,
+          type: newDocument.type,
+          size: newDocument.size,
+          status: newDocument.status,
+          url: newDocument.url,
           created_at: newDocument.created_at.toISOString(),
           updated_at: newDocument.updated_at.toISOString()
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting URL document:", error);
+        throw error;
+      }
+
+      console.log("URL document inserted successfully:", data);
 
       // Format the returned document
       const formattedDoc: Document = {
@@ -174,6 +210,8 @@ const UploadArea = ({ chatbotId, onDocumentsAdded }: UploadAreaProps) => {
         description: "Failed to add URL. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setUploading(false);
     }
   };
 

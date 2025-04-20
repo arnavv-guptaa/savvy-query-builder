@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Document } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -12,28 +13,25 @@ interface KnowledgeBaseProps {
 
 const KnowledgeBase = ({ documents, onDeleteDocument }: KnowledgeBaseProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [deduplicatedDocuments, setDeduplicatedDocuments] = useState<Document[]>([]);
+  const [uniqueDocuments, setUniqueDocuments] = useState<Document[]>([]);
   
-  // Deduplicate documents by ID, keeping the most updated version
+  // Process documents to remove duplicates
   useEffect(() => {
     const documentsMap = new Map<string, Document>();
     
-    // Sort by updated_at to ensure we get the latest status
-    const sortedDocs = [...documents].sort((a, b) => 
-      b.updated_at.getTime() - a.updated_at.getTime()
-    );
-    
-    // Only keep the first occurrence of each document ID
-    sortedDocs.forEach(doc => {
-      if (!documentsMap.has(doc.name)) {
-        documentsMap.set(doc.name, doc);
+    // Process documents to get the unique ones by ID
+    documents.forEach(doc => {
+      // Only add if not already in the map or if the existing document has an older timestamp
+      if (!documentsMap.has(doc.id) || 
+          documentsMap.get(doc.id)!.updated_at < doc.updated_at) {
+        documentsMap.set(doc.id, doc);
       }
     });
     
-    setDeduplicatedDocuments(Array.from(documentsMap.values()));
+    setUniqueDocuments(Array.from(documentsMap.values()));
   }, [documents]);
   
-  const filteredDocuments = deduplicatedDocuments.filter(doc => 
+  const filteredDocuments = uniqueDocuments.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
