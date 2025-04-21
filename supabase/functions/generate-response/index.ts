@@ -3,7 +3,7 @@
 // https://docs.anthropic.com/
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0';
-import { Claude } from 'https://esm.sh/@anthropic-ai/sdk@1.0.0/';
+import { Anthropic } from 'https://esm.sh/@anthropic-ai/sdk@0.16.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
       `Document: ${doc.name} (Type: ${doc.type}, Size: ${doc.size} bytes, Chunks: ${doc.chunks})`
     ).join('\n\n');
 
-    // Initialize Claude API client
-    const claude = new Claude({
+    // Initialize Anthropic API client
+    const anthropic = new Anthropic({
       apiKey: claudeApiKey,
     });
 
@@ -94,7 +94,7 @@ ${chatbot.include_sources ? "4. Cite the source document when providing informat
     `;
 
     // Create the message for Claude
-    const response = await claude.messages.create({
+    const response = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
       max_tokens: chatbot.max_tokens,
       system: systemPrompt,
